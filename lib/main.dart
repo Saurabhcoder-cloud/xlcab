@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 /// Entry point of the XL Cab application.
 void main() {
@@ -71,6 +74,7 @@ class XLCabApp extends StatelessWidget {
 /// Model representing a car available for rent.
 class Car {
   const Car({
+    required this.id,
     required this.name,
     required this.description,
     required this.pricePerDay,
@@ -78,6 +82,21 @@ class Car {
     required this.imageUrl,
   });
 
+  factory Car.fromJson(Map<String, dynamic> json) {
+    final num? rawPrice = json['price_per_day'] as num? ?? json['price'] as num?;
+    final num? rawSeats = json['seats'] as num?;
+
+    return Car(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String,
+      pricePerDay: (rawPrice ?? 0).toDouble(),
+      seats: rawSeats?.toInt() ?? 4,
+      imageUrl: json['image_url'] as String,
+    );
+  }
+
+  final String id;
   final String name;
   final String description;
   final double pricePerDay;
@@ -171,34 +190,31 @@ class _SplashScreenState extends State<SplashScreen> {
 }
 
 /// Home screen displaying a list of available cars for booking.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   static const String routeName = '/home';
 
-  List<Car> get _availableCars => const [
-        Car(
-          name: 'Executive Sedan',
-          description: 'Comfortable ride ideal for business trips and airport transfers.',
-          pricePerDay: 79.99,
-          seats: 4,
-          imageUrl: 'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=600&q=80',
-        ),
-        Car(
-          name: 'Luxury SUV',
-          description: 'Spacious and premium SUV with ample room for families and luggage.',
-          pricePerDay: 119.99,
-          seats: 6,
-          imageUrl: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=600&q=80',
-        ),
-        Car(
-          name: 'City Hatchback',
-          description: 'Compact and efficient vehicle perfect for urban adventures.',
-          pricePerDay: 59.99,
-          seats: 4,
-          imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=600&q=80',
-        ),
-      ];
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late Future<List<Car>> _carsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _carsFuture = _loadCars();
+  }
+
+  Future<List<Car>> _loadCars() async {
+    final String jsonString = await rootBundle.loadString('assets/data/cars.json');
+    final List<dynamic> decoded = json.decode(jsonString) as List<dynamic>;
+    return decoded
+        .map((dynamic item) => Car.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -212,12 +228,39 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _availableCars.length,
-        itemBuilder: (context, index) {
-          final car = _availableCars[index];
-          return _CarCard(car: car);
+      body: FutureBuilder<List<Car>>(
+        future: _carsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Failed to load cars. Please try again later.',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          final cars = snapshot.data ?? <Car>[];
+          if (cars.isEmpty) {
+            return const Center(
+              child: Text('No cars available at the moment.'),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            physics: const BouncingScrollPhysics(),
+            itemCount: cars.length,
+            itemBuilder: (context, index) {
+              final car = cars[index];
+              return _CarCard(car: car);
+            },
+          );
         },
       ),
     );
@@ -230,77 +273,94 @@ class _CarCard extends StatelessWidget {
 
   final Car car;
 
+  void _openDetails(BuildContext context) {
+    Navigator.pushNamed(
+      context,
+      CarDetailsScreen.routeName,
+      arguments: car,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(
-        context,
-        CarDetailsScreen.routeName,
-        arguments: car,
-      ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFFFC107), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.network(
-                car.imageUrl,
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _openDetails(context),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFFC107), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                child: Image.network(
+                  car.imageUrl,
                   height: 180,
-                  color: Colors.black,
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.directions_car, size: 48, color: Colors.white),
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 180,
+                    color: Colors.black,
+                    alignment: Alignment.center,
+                    child:
+                        const Icon(Icons.directions_car, size: 48, color: Colors.white),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    car.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      car.name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    car.description,
-                    style: const TextStyle(fontSize: 14, color: Colors.white70),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.event_seat, size: 18),
-                      const SizedBox(width: 4),
-                      Text('${car.seats} seats'),
-                      const Spacer(),
-                      Text('\$${car.pricePerDay.toStringAsFixed(2)}/day'),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      car.description,
+                      style: const TextStyle(fontSize: 14, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.event_seat, size: 18),
+                        const SizedBox(width: 4),
+                        Text('${car.seats} seats'),
+                        const Spacer(),
+                        Text('\$${car.pricePerDay.toStringAsFixed(2)}/day'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => _openDetails(context),
+                        child: const Text('Book Now'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
