@@ -1,0 +1,47 @@
+[
+  {
+    "id": "executive_sedan",
+    "name": "Executive Sedan",
+    "description": "Comfortable ride ideal for business trips and airport transfers.",
+    "price_per_day": 79.99,
+    "seats": 4,
+    "image_urls": [
+      "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1517142089942-ba376ce32a0b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1511910849309-0e5e76c41f87?auto=format&fit=crop&w=1200&q=80"
+    ]
+  },
+  {
+    "id": "luxury_suv",
+    "name": "Luxury SUV",
+    "description": "Spacious and premium SUV with ample room for families and luggage.",
+    "price_per_day": 119.99,
+    "seats": 6,
+    "image_urls": [
+      "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1483721310020-03333e577078?auto=format&fit=crop&w=1200&q=80"
+    ]
+  },
+  {
+    "id": "city_hatchback",
+    "name": "City Hatchback",
+    "description": "Compact and efficient vehicle perfect for urban adventures.",
+    "price_per_day": 59.99,
+    "seats": 4,
+    "image_urls": [
+      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1471478331149-c72f17e33c73?auto=format&fit=crop&w=1200&q=80"
+    ]
+  },
+  {
+    "id": "business_van",
+    "name": "Business Van",
+    "description": "Ideal for group travel with generous luggage space and comfort.",
+    "price_per_day": 139.5,
+    "seats": 8,
+    "image_urls": [
+      "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1617813489742-024b02da8c7f?auto=format&fit=crop&w=1200&q=80"
+    ]
+  }
+]
