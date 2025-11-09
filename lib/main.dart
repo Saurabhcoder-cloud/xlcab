@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -856,7 +857,7 @@ class _PickerTextField extends StatelessWidget {
 }
 
 /// Booking confirmation screen showing a summary of reservation details.
-class BookingConfirmationScreen extends StatelessWidget {
+class BookingConfirmationScreen extends StatefulWidget {
   const BookingConfirmationScreen({required this.details, super.key});
 
   static const String routeName = '/booking-confirmation';
@@ -864,7 +865,49 @@ class BookingConfirmationScreen extends StatelessWidget {
   final BookingDetails details;
 
   @override
+  State<BookingConfirmationScreen> createState() =>
+      _BookingConfirmationScreenState();
+}
+
+class _BookingConfirmationScreenState extends State<BookingConfirmationScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _iconScaleAnimation;
+  late final Animation<double> _contentFadeAnimation;
+  late final Animation<double> _confettiProgress;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..forward();
+
+    _iconScaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.elasticOut,
+    );
+    _contentFadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.35, 1, curve: Curves.easeIn),
+    );
+    _confettiProgress = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0, 0.8, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final BookingDetails details = widget.details;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Booking Confirmed')),
       body: Padding(
@@ -872,42 +915,76 @@ class BookingConfirmationScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.check_circle, color: Color(0xFFFFC107), size: 72),
-            const SizedBox(height: 16),
-            Text(
-              'Your ${details.car.name} booking is confirmed!',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 220,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(
+                    child: _ConfettiBurst(animation: _confettiProgress),
+                  ),
+                  ScaleTransition(
+                    scale: Tween<double>(begin: 0.7, end: 1.0)
+                        .animate(_iconScaleAnimation),
+                    child: FadeTransition(
+                      opacity: _contentFadeAnimation,
+                      child: const Text(
+                        '✅',
+                        style: TextStyle(fontSize: 96),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            _BookingInfoRow(
-              label: 'Car',
-              value: details.car.name,
-            ),
-            _BookingInfoRow(
-              label: 'Pickup Location',
-              value: details.pickupLocation,
-            ),
-            _BookingInfoRow(
-              label: 'Drop Location',
-              value: details.dropLocation,
-            ),
-            _BookingInfoRow(
-              label: 'Pickup Date',
-              value: _formatDate(details.pickupDate),
-            ),
-            _BookingInfoRow(
-              label: 'Pickup Time',
-              value: details.pickupTime.format(context),
+            const SizedBox(height: 24),
+            FadeTransition(
+              opacity: _contentFadeAnimation,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your booking has been successfully placed!',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  _BookingInfoRow(
+                    label: 'Car',
+                    value: details.car.name,
+                  ),
+                  _BookingInfoRow(
+                    label: 'Pickup Location',
+                    value: details.pickupLocation,
+                  ),
+                  _BookingInfoRow(
+                    label: 'Drop Location',
+                    value: details.dropLocation,
+                  ),
+                  _BookingInfoRow(
+                    label: 'Pickup Date',
+                    value: _formatDate(details.pickupDate),
+                  ),
+                  _BookingInfoRow(
+                    label: 'Pickup Time',
+                    value: details.pickupTime.format(context),
+                  ),
+                ],
+              ),
             ),
             const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.popUntil(
-                  context,
-                  ModalRoute.withName(HomeScreen.routeName),
+            FadeTransition(
+              opacity: _contentFadeAnimation,
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    HomeScreen.routeName,
+                    (route) => false,
+                  ),
+                  child: const Text('Back to Home'),
                 ),
-                child: const Text('Back to Home'),
               ),
             ),
           ],
@@ -922,6 +999,88 @@ class BookingConfirmationScreen extends StatelessWidget {
     final String year = date.year.toString();
     return '$day/$month/$year';
   }
+}
+
+class _ConfettiBurst extends StatelessWidget {
+  const _ConfettiBurst({required this.animation});
+
+  final Animation<double> animation;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        return SizedBox.expand(
+          child: CustomPaint(
+            painter: _ConfettiPainter(progress: animation.value),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ConfettiPainter extends CustomPainter {
+  _ConfettiPainter({required this.progress});
+
+  final double progress;
+
+  static const List<_ConfettiPiece> _pieces = <_ConfettiPiece>[
+    _ConfettiPiece(angle: -75, maxDistance: 120, sway: 10, fallSpeed: 18,
+        color: Color(0xFFFFC107), size: 6),
+    _ConfettiPiece(angle: -40, maxDistance: 140, sway: 6, fallSpeed: 26,
+        color: Color(0xFF4CAF50), size: 5),
+    _ConfettiPiece(angle: 0, maxDistance: 150, sway: 8, fallSpeed: 20,
+        color: Color(0xFFFF5722), size: 7),
+    _ConfettiPiece(angle: 40, maxDistance: 140, sway: 7, fallSpeed: 24,
+        color: Color(0xFF29B6F6), size: 5.5),
+    _ConfettiPiece(angle: 75, maxDistance: 120, sway: 9, fallSpeed: 18,
+        color: Color(0xFFFFEB3B), size: 6.5),
+    _ConfettiPiece(angle: -120, maxDistance: 110, sway: 6, fallSpeed: 22,
+        color: Color(0xFFFF4081), size: 5.5),
+    _ConfettiPiece(angle: 120, maxDistance: 110, sway: 6, fallSpeed: 22,
+        color: Color(0xFF8BC34A), size: 5),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    for (final _ConfettiPiece piece in _pieces) {
+      final double radians = piece.angle * math.pi / 180;
+      final double distance = piece.maxDistance * progress;
+      final double swayOffset =
+          math.sin((progress * 6 * math.pi) + radians) * piece.sway;
+      final double x = center.dx + math.cos(radians) * distance + swayOffset;
+      final double y = center.dy + math.sin(radians) * distance +
+          (progress * piece.fallSpeed);
+      final Paint paint = Paint()
+        ..color = piece.color.withOpacity((1 - progress).clamp(0, 1).toDouble());
+      canvas.drawCircle(Offset(x, y), piece.size, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _ConfettiPiece {
+  const _ConfettiPiece({
+    required this.angle,
+    required this.maxDistance,
+    required this.sway,
+    required this.fallSpeed,
+    required this.color,
+    required this.size,
+  });
+
+  final double angle;
+  final double maxDistance;
+  final double sway;
+  final double fallSpeed;
+  final Color color;
+  final double size;
 }
 
 /// Small helper widget to format booking information rows.
