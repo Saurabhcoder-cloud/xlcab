@@ -207,17 +207,108 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-/// Home screen displaying a list of available cars for booking.
+/// Available navigation tabs for the primary scaffold.
+enum HomeTab { home, bookings, profile }
+
+/// Home screen hosting the bottom navigation and tab content.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({this.initialTab = HomeTab.home, super.key});
 
   static const String routeName = '/home';
+
+  final HomeTab initialTab;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  late HomeTab _currentTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTab = widget.initialTab;
+  }
+
+  void _onTabSelected(int index) {
+    setState(() {
+      _currentTab = HomeTab.values[index];
+    });
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    switch (_currentTab) {
+      case HomeTab.home:
+        return AppBar(
+          title: const Text('Available Rides'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.person),
+              tooltip: 'Profile',
+              onPressed: () => _onTabSelected(HomeTab.profile.index),
+            ),
+          ],
+        );
+      case HomeTab.bookings:
+        return AppBar(
+          title: const Text('My Bookings'),
+        );
+      case HomeTab.profile:
+        return ProfileScreen.buildAppBar();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: SafeArea(
+        child: IndexedStack(
+          index: _currentTab.index,
+          children: const [
+            HomeCatalogueTab(),
+            BookingsScreen(),
+            ProfileContent(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentTab.index,
+        onTap: _onTabSelected,
+        backgroundColor: const Color(0xFF121212),
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: Colors.white70,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.directions_car),
+            label: 'Bookings',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tab content displaying the list of available cars for booking.
+class HomeCatalogueTab extends StatefulWidget {
+  const HomeCatalogueTab({super.key});
+
+  @override
+  State<HomeCatalogueTab> createState() => _HomeCatalogueTabState();
+}
+
+class _HomeCatalogueTabState extends State<HomeCatalogueTab> {
   late Future<List<Car>> _carsFuture;
 
   @override
@@ -236,51 +327,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Available Rides'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () => Navigator.pushNamed(context, ProfileScreen.routeName),
-          ),
-        ],
-      ),
-      body: FutureBuilder<List<Car>>(
-        future: _carsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return FutureBuilder<List<Car>>(
+      future: _carsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Failed to load cars. Please try again later.',
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-
-          final cars = snapshot.data ?? <Car>[];
-          if (cars.isEmpty) {
-            return const Center(
-              child: Text('No cars available at the moment.'),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            physics: const BouncingScrollPhysics(),
-            itemCount: cars.length,
-            itemBuilder: (context, index) {
-              final car = cars[index];
-              return _CarCard(car: car);
-            },
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Failed to load cars. Please try again later.',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
           );
-        },
-      ),
+        }
+
+        final cars = snapshot.data ?? <Car>[];
+        if (cars.isEmpty) {
+          return const Center(
+            child: Text('No cars available at the moment.'),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          physics: const BouncingScrollPhysics(),
+          itemCount: cars.length,
+          itemBuilder: (context, index) {
+            final car = cars[index];
+            return _CarCard(car: car);
+          },
+        );
+      },
     );
   }
 }
@@ -380,6 +460,106 @@ class _CarCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Tab displaying bookings made during the current session.
+class BookingsScreen extends StatelessWidget {
+  const BookingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final List<BookingDetails> bookings =
+        List<BookingDetails>.from(BookingFormScreen.temporaryBookings.reversed);
+
+    if (bookings.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.directions_car, size: 64, color: Color(0xFFFFC107)),
+              SizedBox(height: 16),
+              Text(
+                'No bookings yet',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Your confirmed rides will appear here once you make a booking.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: bookings.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final booking = bookings[index];
+        return _BookingSummaryCard(details: booking);
+      },
+    );
+  }
+}
+
+class _BookingSummaryCard extends StatelessWidget {
+  const _BookingSummaryCard({required this.details});
+
+  final BookingDetails details;
+
+  String _formatDate(DateTime date) {
+    final String day = date.day.toString().padLeft(2, '0');
+    final String month = date.month.toString().padLeft(2, '0');
+    final String year = date.year.toString();
+    return '$day/$month/$year';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final schedule =
+        '${_formatDate(details.pickupDate)} · ${details.pickupTime.format(context)}';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration.copyWith(
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black38,
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_taxi, color: Color(0xFFFFC107)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  details.car.name,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              Text('\$${details.car.pricePerDay.toStringAsFixed(2)}/day'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _BookingInfoRow(label: 'Schedule', value: schedule),
+          _BookingInfoRow(label: 'Pickup', value: details.pickupLocation),
+          _BookingInfoRow(label: 'Drop-off', value: details.dropLocation),
+        ],
       ),
     );
   }
@@ -1149,64 +1329,78 @@ class ProfileScreen extends StatelessWidget {
     ),
   ];
 
+  static PreferredSizeWidget buildAppBar() {
+    return AppBar(
+      title: const Text('Profile'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit),
+          tooltip: 'Edit profile',
+          onPressed: () {},
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit profile',
-            onPressed: () {},
+      appBar: buildAppBar(),
+      body: const SafeArea(
+        child: ProfileContent(),
+      ),
+    );
+  }
+}
+
+/// Shared profile layout used across the profile tab and routed screen.
+class ProfileContent extends StatelessWidget {
+  const ProfileContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ProfileHeader(user: ProfileScreen._user),
+          const SizedBox(height: 24),
+          const Text(
+            'Booking History',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          if (ProfileScreen._bookingHistory.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: _cardDecoration,
+              child: const Text('No bookings yet. Start exploring our cars!'),
+            )
+          else
+            Column(
+              children: ProfileScreen._bookingHistory
+                  .map((item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _BookingHistoryCard(item: item),
+                      ))
+                  .toList(),
+            ),
+          const SizedBox(height: 32),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.logout),
+              label: const Text('Log Out'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFFFC107),
+                side: const BorderSide(color: Color(0xFFFFC107)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            ),
           ),
         ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ProfileHeader(user: _user),
-              const SizedBox(height: 24),
-              const Text(
-                'Booking History',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              if (_bookingHistory.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: _cardDecoration,
-                  child: const Text('No bookings yet. Start exploring our cars!'),
-                )
-              else
-                Column(
-                  children: _bookingHistory
-                      .map((item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _BookingHistoryCard(item: item),
-                          ))
-                      .toList(),
-                ),
-              const SizedBox(height: 32),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Log Out'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFFFC107),
-                    side: const BorderSide(color: Color(0xFFFFC107)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
