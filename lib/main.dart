@@ -79,12 +79,26 @@ class Car {
     required this.description,
     required this.pricePerDay,
     required this.seats,
-    required this.imageUrl,
+    required this.imageUrls,
   });
 
   factory Car.fromJson(Map<String, dynamic> json) {
     final num? rawPrice = json['price_per_day'] as num? ?? json['price'] as num?;
     final num? rawSeats = json['seats'] as num?;
+
+    final List<dynamic>? rawImageList = json['image_urls'] as List<dynamic>?;
+    final List<String> imageUrls;
+    if (rawImageList != null && rawImageList.isNotEmpty) {
+      imageUrls = rawImageList
+          .whereType<String>()
+          .where((url) => url.trim().isNotEmpty)
+          .toList();
+    } else {
+      final String? singleUrl = json['image_url'] as String?;
+      imageUrls = singleUrl == null || singleUrl.trim().isEmpty
+          ? <String>[]
+          : <String>[singleUrl];
+    }
 
     return Car(
       id: json['id'] as String,
@@ -92,7 +106,9 @@ class Car {
       description: json['description'] as String,
       pricePerDay: (rawPrice ?? 0).toDouble(),
       seats: rawSeats?.toInt() ?? 4,
-      imageUrl: json['image_url'] as String,
+      imageUrls: imageUrls.isEmpty
+          ? const <String>['https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=800&q=80']
+          : imageUrls,
     );
   }
 
@@ -101,7 +117,10 @@ class Car {
   final String description;
   final double pricePerDay;
   final int seats;
-  final String imageUrl;
+  final List<String> imageUrls;
+
+  /// Convenience accessor for the first image in the gallery.
+  String get primaryImageUrl => imageUrls.first;
 }
 
 /// Details collected from the booking form.
@@ -308,7 +327,7 @@ class _CarCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 child: Image.network(
-                  car.imageUrl,
+                  car.primaryImageUrl,
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -368,7 +387,7 @@ class _CarCard extends StatelessWidget {
 }
 
 /// Detailed view for a specific car, with booking call-to-action.
-class CarDetailsScreen extends StatelessWidget {
+class CarDetailsScreen extends StatefulWidget {
   const CarDetailsScreen({required this.car, super.key});
 
   static const String routeName = '/car-details';
@@ -376,62 +395,212 @@ class CarDetailsScreen extends StatelessWidget {
   final Car car;
 
   @override
+  State<CarDetailsScreen> createState() => _CarDetailsScreenState();
+}
+
+class _CarDetailsScreenState extends State<CarDetailsScreen> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onBookNow() {
+    Navigator.pushNamed(
+      context,
+      BookingFormScreen.routeName,
+      arguments: widget.car,
+    );
+  }
+
+  Widget _buildImageCarousel() {
+    final images = widget.car.imageUrls;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            SizedBox(
+              height: 260,
+              width: double.infinity,
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: images.length,
+                onPageChanged: (index) => setState(() => _currentPage = index),
+                itemBuilder: (context, index) {
+                  final url = images[index];
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) {
+                          return child;
+                        }
+                        return Container(
+                          color: Colors.black,
+                          alignment: Alignment.center,
+                          child: const CircularProgressIndicator(),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.black,
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.directions_car,
+                          size: 72,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (images.length > 1)
+              Positioned(
+                bottom: 12,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(images.length, (index) {
+                    final bool isActive = index == _currentPage;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      height: 8,
+                      width: isActive ? 20 : 8,
+                      decoration: BoxDecoration(
+                        color: isActive ? const Color(0xFFFFC107) : Colors.white54,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(car.name)),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: Text(widget.car.name)),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  car.imageUrl,
-                  height: 220,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 220,
-                    color: Colors.black,
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.directions_car, size: 64, color: Colors.white),
-                  ),
+              _buildImageCarousel(),
+              const SizedBox(height: 24),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.45),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.car.name,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFFFC107),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.event_seat, color: Colors.white.withOpacity(0.9)),
+                        const SizedBox(width: 8),
+                        Text('${widget.car.seats} seats'),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFC107).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFFFC107)),
+                          ),
+                          child: Text(
+                            '\$${widget.car.pricePerDay.toStringAsFixed(2)}/day',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFFFC107),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      widget.car.description,
+                      style: const TextStyle(height: 1.5, fontSize: 16),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                car.description,
-                style: const TextStyle(fontSize: 16, height: 1.4),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Chip(
-                    backgroundColor: Colors.black.withOpacity(0.6),
-                    label: Text('${car.seats} seats'),
-                  ),
-                  const SizedBox(width: 12),
-                  Chip(
-                    backgroundColor: Colors.black.withOpacity(0.6),
-                    label: Text('\$${car.pricePerDay.toStringAsFixed(2)} per day'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    BookingFormScreen.routeName,
-                    arguments: car,
-                  );
-                },
-                icon: const Icon(Icons.assignment),
-                label: const Text('Book Now'),
-              ),
             ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFC107),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: _onBookNow,
+              child: const Text('Book Now'),
+            ),
           ),
         ),
       ),
