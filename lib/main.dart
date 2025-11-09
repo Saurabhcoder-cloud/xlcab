@@ -1113,107 +1113,315 @@ class _BookingInfoRow extends StatelessWidget {
   }
 }
 
-/// Profile screen displaying saved user information and preferences.
+/// Profile screen displaying high-level user information and booking history.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   static const String routeName = '/profile';
 
+  static const _MockUser _user = _MockUser(
+    name: 'Alex Johnson',
+    email: 'alex.johnson@example.com',
+    phone: '+1 (555) 987-1234',
+  );
+
+  static const List<_BookingHistoryItem> _bookingHistory = <_BookingHistoryItem>[
+    _BookingHistoryItem(
+      carName: 'Tesla Model 3',
+      pickupLocation: 'Downtown Hub',
+      dropLocation: 'Airport Terminal 1',
+      dateLabel: '12 Aug 2024 · 10:00 AM',
+      status: 'Completed',
+    ),
+    _BookingHistoryItem(
+      carName: 'BMW 5 Series',
+      pickupLocation: 'City Center',
+      dropLocation: 'Harbor Bay',
+      dateLabel: '28 Jul 2024 · 6:30 PM',
+      status: 'Completed',
+    ),
+    _BookingHistoryItem(
+      carName: 'Mercedes GLC',
+      pickupLocation: 'Corporate Plaza',
+      dropLocation: 'Downtown Hotel',
+      dateLabel: '04 Jul 2024 · 8:15 AM',
+      status: 'Upcoming',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Profile')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Edit profile',
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ProfileHeader(user: _user),
+              const SizedBox(height: 24),
+              const Text(
+                'Booking History',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              if (_bookingHistory.isEmpty)
                 Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFFFC107),
-                  ),
                   padding: const EdgeInsets.all(16),
-                  child: const Icon(Icons.person, size: 48, color: Colors.black),
-                ),
-                const SizedBox(width: 16),
+                  decoration: _cardDecoration,
+                  child: const Text('No bookings yet. Start exploring our cars!'),
+                )
+              else
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Alex Johnson',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'alex.johnson@example.com',
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                  ],
+                  children: _bookingHistory
+                      .map((item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _BookingHistoryCard(item: item),
+                          ))
+                      .toList(),
                 ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Preferred Pickup Locations',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            const _ProfileListItem(icon: Icons.location_on, label: 'Downtown Office'),
-            const _ProfileListItem(icon: Icons.location_on, label: 'Airport Terminal 1'),
-            const SizedBox(height: 24),
-            const Text(
-              'Saved Payment Methods',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            const _ProfileListItem(icon: Icons.credit_card, label: 'Visa ending in •••• 4242'),
-            const SizedBox(height: 24),
-            const Text(
-              'Support',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            const _ProfileListItem(icon: Icons.phone, label: '+1 800 123 4567'),
-            const _ProfileListItem(icon: Icons.email, label: 'support@xlcab.com'),
-          ],
+              const SizedBox(height: 32),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Log Out'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFFFC107),
+                    side: const BorderSide(color: Color(0xFFFFC107)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Simple reusable list tile for profile information.
-class _ProfileListItem extends StatelessWidget {
-  const _ProfileListItem({required this.icon, required this.label});
+const BoxDecoration _cardDecoration = BoxDecoration(
+  color: Color(0xFF1F1F1F),
+  borderRadius: BorderRadius.all(Radius.circular(16)),
+  border: Border.fromBorderSide(BorderSide(color: Colors.white10)),
+  boxShadow: [
+    const BoxShadow(
+      color: Colors.black54,
+      blurRadius: 12,
+      offset: Offset(0, 6),
+    ),
+  ],
+);
 
-  final IconData icon;
-  final String label;
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.user});
+
+  final _MockUser user;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: const Color(0xFFFFC107)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 14),
-            ),
+          Row(
+            children: [
+              Container(
+                height: 64,
+                width: 64,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFFFC107),
+                ),
+                child: const Icon(Icons.person, size: 40, color: Colors.black),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      user.email,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _ProfileDetailRow(
+            icon: Icons.phone,
+            label: 'Phone',
+            value: user.phone,
+          ),
+          const SizedBox(height: 12),
+          _ProfileDetailRow(
+            icon: Icons.email,
+            label: 'Email',
+            value: user.email,
           ),
         ],
       ),
     );
   }
+}
+
+class _ProfileDetailRow extends StatelessWidget {
+  const _ProfileDetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFFFFC107)),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BookingHistoryCard extends StatelessWidget {
+  const _BookingHistoryCard({required this.item});
+
+  final _BookingHistoryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration.copyWith(
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black38,
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.directions_car, color: Color(0xFFFFC107)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  item.carName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: item.status == 'Completed'
+                      ? Colors.green.withOpacity(0.2)
+                      : Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  item.status,
+                  style: TextStyle(
+                    color: item.status == 'Completed' ? Colors.greenAccent : Colors.orangeAccent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ProfileDetailRow(
+            icon: Icons.calendar_today,
+            label: 'Schedule',
+            value: item.dateLabel,
+          ),
+          const SizedBox(height: 8),
+          _ProfileDetailRow(
+            icon: Icons.location_on,
+            label: 'Pickup',
+            value: item.pickupLocation,
+          ),
+          const SizedBox(height: 8),
+          _ProfileDetailRow(
+            icon: Icons.flag,
+            label: 'Drop-off',
+            value: item.dropLocation,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MockUser {
+  const _MockUser({
+    required this.name,
+    required this.email,
+    required this.phone,
+  });
+
+  final String name;
+  final String email;
+  final String phone;
+}
+
+class _BookingHistoryItem {
+  const _BookingHistoryItem({
+    required this.carName,
+    required this.pickupLocation,
+    required this.dropLocation,
+    required this.dateLabel,
+    required this.status,
+  });
+
+  final String carName;
+  final String pickupLocation;
+  final String dropLocation;
+  final String dateLabel;
+  final String status;
 }
