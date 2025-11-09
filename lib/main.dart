@@ -269,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
           index: _currentTab.index,
           children: const [
             HomeCatalogueTab(),
-            BookingsScreen(),
+            BookingListScreen(),
             ProfileContent(),
           ],
         ),
@@ -466,12 +466,19 @@ class _CarCard extends StatelessWidget {
 }
 
 /// Tab displaying bookings made during the current session.
-class BookingsScreen extends StatelessWidget {
-  const BookingsScreen({super.key});
+class BookingListScreen extends StatelessWidget {
+  const BookingListScreen({super.key});
+
+  String _formatDate(DateTime date) {
+    final String day = date.day.toString().padLeft(2, '0');
+    final String month = date.month.toString().padLeft(2, '0');
+    final String year = date.year.toString();
+    return '$day/$month/$year';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<BookingDetails> bookings =
+    final bookings =
         List<BookingDetails>.from(BookingFormScreen.temporaryBookings.reversed);
 
     if (bookings.isEmpty) {
@@ -504,63 +511,46 @@ class BookingsScreen extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final booking = bookings[index];
-        return _BookingSummaryCard(details: booking);
-      },
-    );
-  }
-}
+        final schedule =
+            '${_formatDate(booking.pickupDate)} · ${booking.pickupTime.format(context)}';
 
-class _BookingSummaryCard extends StatelessWidget {
-  const _BookingSummaryCard({required this.details});
-
-  final BookingDetails details;
-
-  String _formatDate(DateTime date) {
-    final String day = date.day.toString().padLeft(2, '0');
-    final String month = date.month.toString().padLeft(2, '0');
-    final String year = date.year.toString();
-    return '$day/$month/$year';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final schedule =
-        '${_formatDate(details.pickupDate)} · ${details.pickupTime.format(context)}';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration.copyWith(
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black38,
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.local_taxi, color: Color(0xFFFFC107)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  details.car.name,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
+        return Container(
+          decoration: _cardDecoration.copyWith(
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 6,
+                offset: Offset(0, 4),
               ),
-              Text('\$${details.car.pricePerDay.toStringAsFixed(2)}/day'),
             ],
           ),
-          const SizedBox(height: 12),
-          _BookingInfoRow(label: 'Schedule', value: schedule),
-          _BookingInfoRow(label: 'Pickup', value: details.pickupLocation),
-          _BookingInfoRow(label: 'Drop-off', value: details.dropLocation),
-        ],
-      ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.local_taxi, color: Color(0xFFFFC107)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      booking.car.name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _BookingInfoRow(label: 'Schedule', value: schedule),
+              _BookingInfoRow(label: 'Pickup', value: booking.pickupLocation),
+              _BookingInfoRow(label: 'Drop-off', value: booking.dropLocation),
+            ],
+          ),
+        );
+      },
     );
   }
 }
