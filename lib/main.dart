@@ -127,19 +127,17 @@ class Car {
 class BookingDetails {
   const BookingDetails({
     required this.car,
-    required this.fullName,
-    required this.phoneNumber,
+    required this.pickupLocation,
+    required this.dropLocation,
     required this.pickupDate,
-    required this.dropOffDate,
-    required this.specialRequests,
+    required this.pickupTime,
   });
 
   final Car car;
-  final String fullName;
-  final String phoneNumber;
+  final String pickupLocation;
+  final String dropLocation;
   final DateTime pickupDate;
-  final DateTime dropOffDate;
-  final String specialRequests;
+  final TimeOfDay pickupTime;
 }
 
 /// Splash screen displaying the XL Cab logo with a fade-in animation.
@@ -613,6 +611,7 @@ class BookingFormScreen extends StatefulWidget {
   const BookingFormScreen({required this.car, super.key});
 
   static const String routeName = '/booking-form';
+  static final List<BookingDetails> temporaryBookings = <BookingDetails>[];
 
   final Car car;
 
@@ -622,36 +621,31 @@ class BookingFormScreen extends StatefulWidget {
 
 class _BookingFormScreenState extends State<BookingFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _pickupDateController = TextEditingController();
-  final TextEditingController _dropOffDateController = TextEditingController();
-  final TextEditingController _specialRequestsController = TextEditingController();
+  final TextEditingController _pickupLocationController = TextEditingController();
+  final TextEditingController _dropLocationController = TextEditingController();
+  final TextEditingController _dateController = TextEditingController();
+  final TextEditingController _timeController = TextEditingController();
 
-  DateTime? _pickupDate;
-  DateTime? _dropOffDate;
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    _pickupDateController.dispose();
-    _dropOffDateController.dispose();
-    _specialRequestsController.dispose();
+    _pickupLocationController.dispose();
+    _dropLocationController.dispose();
+    _dateController.dispose();
+    _timeController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectDate({required bool isPickup}) async {
-    final initialDate = isPickup
-        ? (_pickupDate ?? DateTime.now())
-        : (_dropOffDate ?? _pickupDate ?? DateTime.now());
-    final firstDate = DateTime.now();
+  Future<void> _selectDate() async {
+    final initialDate = _selectedDate ?? DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: firstDate,
+      firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      helpText: isPickup ? 'Select pickup date' : 'Select drop-off date',
+      helpText: 'Select pickup date',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -664,23 +658,40 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
     if (pickedDate != null) {
       setState(() {
-        if (isPickup) {
-          _pickupDate = pickedDate;
-          _pickupDateController.text = _formatDate(pickedDate);
-          if (_dropOffDate != null && _dropOffDate!.isBefore(pickedDate)) {
-            _dropOffDate = null;
-            _dropOffDateController.clear();
-          }
-        } else {
-          _dropOffDate = pickedDate;
-          _dropOffDateController.text = _formatDate(pickedDate);
-        }
+        _selectedDate = pickedDate;
+        _dateController.text = _formatDate(pickedDate);
+      });
+    }
+  }
+
+  Future<void> _selectTime() async {
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? TimeOfDay.now(),
+      helpText: 'Select pickup time',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(primary: Color(0xFFFFC107)),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime != null) {
+      setState(() {
+        _selectedTime = pickedTime;
+        _timeController.text = pickedTime.format(context);
       });
     }
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    final String day = date.day.toString().padLeft(2, '0');
+    final String month = date.month.toString().padLeft(2, '0');
+    final String year = date.year.toString();
+    return '$day/$month/$year';
   }
 
   void _submitForm() {
@@ -688,28 +699,22 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       return;
     }
 
-    if (_pickupDate == null || _dropOffDate == null) {
+    if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select both pickup and drop-off dates.')),
-      );
-      return;
-    }
-
-    if (_dropOffDate!.isBefore(_pickupDate!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Drop-off date cannot be before pickup date.')),
+        const SnackBar(content: Text('Please select both pickup date and time.')),
       );
       return;
     }
 
     final details = BookingDetails(
       car: widget.car,
-      fullName: _nameController.text,
-      phoneNumber: _phoneController.text,
-      pickupDate: _pickupDate!,
-      dropOffDate: _dropOffDate!,
-      specialRequests: _specialRequestsController.text,
+      pickupLocation: _pickupLocationController.text.trim(),
+      dropLocation: _dropLocationController.text.trim(),
+      pickupDate: _selectedDate!,
+      pickupTime: _selectedTime!,
     );
+
+    BookingFormScreen.temporaryBookings.add(details);
 
     Navigator.pushNamed(
       context,
@@ -729,64 +734,82 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFFFC107).withOpacity(0.5)),
+                  color: Colors.black.withOpacity(0.3),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.car.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '\$${widget.car.pricePerDay.toStringAsFixed(2)} per day',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               TextFormField(
-                controller: _nameController,
+                controller: _pickupLocationController,
+                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
-                  labelText: 'Full Name',
-                  prefixIcon: Icon(Icons.person),
+                  labelText: 'Pickup Location',
+                  prefixIcon: Icon(Icons.location_on),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your name';
+                    return 'Enter a pickup location';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
+                controller: _dropLocationController,
+                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  prefixIcon: Icon(Icons.phone),
+                  labelText: 'Drop Location',
+                  prefixIcon: Icon(Icons.flag),
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().length < 8) {
-                    return 'Enter a valid phone number';
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter a drop location';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              _DatePickerField(
-                controller: _pickupDateController,
+              _PickerTextField(
+                controller: _dateController,
                 label: 'Pickup Date',
                 icon: Icons.calendar_today,
-                onTap: () => _selectDate(isPickup: true),
+                onTap: _selectDate,
               ),
               const SizedBox(height: 16),
-              _DatePickerField(
-                controller: _dropOffDateController,
-                label: 'Drop-off Date',
-                icon: Icons.event_available,
-                onTap: () => _selectDate(isPickup: false),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _specialRequestsController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Special Requests (optional)',
-                  alignLabelWithHint: true,
-                  prefixIcon: Icon(Icons.message),
-                ),
+              _PickerTextField(
+                controller: _timeController,
+                label: 'Pickup Time',
+                icon: Icons.access_time,
+                onTap: _selectTime,
               ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _submitForm,
-                  child: const Text('Submit Booking'),
+                  child: const Text('Confirm Booking'),
                 ),
               ),
             ],
@@ -797,9 +820,9 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   }
 }
 
-/// Reusable field to show a read-only text box that opens a date picker.
-class _DatePickerField extends StatelessWidget {
-  const _DatePickerField({
+/// Reusable field to show a read-only text box that opens a picker dialog.
+class _PickerTextField extends StatelessWidget {
+  const _PickerTextField({
     required this.controller,
     required this.label,
     required this.icon,
@@ -852,7 +875,7 @@ class BookingConfirmationScreen extends StatelessWidget {
             const Icon(Icons.check_circle, color: Color(0xFFFFC107), size: 72),
             const SizedBox(height: 16),
             Text(
-              'Thank you, ${details.fullName}! Your booking is confirmed.',
+              'Your ${details.car.name} booking is confirmed!',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -861,22 +884,21 @@ class BookingConfirmationScreen extends StatelessWidget {
               value: details.car.name,
             ),
             _BookingInfoRow(
+              label: 'Pickup Location',
+              value: details.pickupLocation,
+            ),
+            _BookingInfoRow(
+              label: 'Drop Location',
+              value: details.dropLocation,
+            ),
+            _BookingInfoRow(
               label: 'Pickup Date',
               value: _formatDate(details.pickupDate),
             ),
             _BookingInfoRow(
-              label: 'Drop-off Date',
-              value: _formatDate(details.dropOffDate),
+              label: 'Pickup Time',
+              value: details.pickupTime.format(context),
             ),
-            _BookingInfoRow(
-              label: 'Contact',
-              value: details.phoneNumber,
-            ),
-            if (details.specialRequests.isNotEmpty)
-              _BookingInfoRow(
-                label: 'Special Requests',
-                value: details.specialRequests,
-              ),
             const Spacer(),
             SizedBox(
               width: double.infinity,
@@ -894,7 +916,12 @@ class BookingConfirmationScreen extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
+  String _formatDate(DateTime date) {
+    final String day = date.day.toString().padLeft(2, '0');
+    final String month = date.month.toString().padLeft(2, '0');
+    final String year = date.year.toString();
+    return '$day/$month/$year';
+  }
 }
 
 /// Small helper widget to format booking information rows.
