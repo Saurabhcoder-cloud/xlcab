@@ -3,6 +3,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+const Color kPrimaryYellow = Color(0xFFFFC107);
+const Color kDarkBackground = Color(0xFF0D0D0D);
+const Color kCardSurface = Color(0xFF151515);
 
 /// Entry point of the XL Cab application.
 void main() {
@@ -15,31 +21,95 @@ class XLCabApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryYellow = Color(0xFFFFC107);
-    const Color darkBlack = Color(0xFF121212);
+    final baseTheme = ThemeData(
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: kPrimaryYellow,
+        brightness: Brightness.dark,
+      ),
+      scaffoldBackgroundColor: kDarkBackground,
+      useMaterial3: true,
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+
+    final textTheme = GoogleFonts.poppinsTextTheme(baseTheme.textTheme)
+        .apply(bodyColor: Colors.white, displayColor: Colors.white);
 
     return MaterialApp(
       title: 'XL Cab',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryYellow,
-          brightness: Brightness.dark,
+      theme: baseTheme.copyWith(
+        colorScheme: baseTheme.colorScheme.copyWith(
+          primary: kPrimaryYellow,
+          secondary: kPrimaryYellow,
         ),
-        primaryColor: primaryYellow,
-        scaffoldBackgroundColor: darkBlack,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: darkBlack,
-          foregroundColor: primaryYellow,
+        primaryColor: kPrimaryYellow,
+        scaffoldBackgroundColor: kDarkBackground,
+        textTheme: textTheme,
+        primaryTextTheme: textTheme,
+        appBarTheme: baseTheme.appBarTheme.copyWith(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: kPrimaryYellow,
+          titleTextStyle: textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        cardTheme: CardTheme(
+          color: kCardSurface,
+          elevation: 10,
+          shadowColor: Colors.black.withOpacity(0.35),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          margin: EdgeInsets.zero,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: primaryYellow,
+            backgroundColor: kPrimaryYellow,
             foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            textStyle: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
           ),
         ),
-        useMaterial3: true,
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.05),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: kPrimaryYellow, width: 1.4),
+          ),
+          labelStyle: textTheme.bodyMedium?.copyWith(color: Colors.white70),
+          hintStyle: textTheme.bodyMedium?.copyWith(color: Colors.white54),
+        ),
+        bottomNavigationBarTheme: baseTheme.bottomNavigationBarTheme.copyWith(
+          backgroundColor: const Color(0xFF101010),
+          selectedItemColor: kPrimaryYellow,
+          unselectedItemColor: Colors.white54,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+          type: BottomNavigationBarType.fixed,
+        ),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: kPrimaryYellow,
+          selectionColor: Color(0x33FFC107),
+          selectionHandleColor: kPrimaryYellow,
+        ),
       ),
       debugShowCheckedModeBanner: false,
       initialRoute: SplashScreen.routeName,
@@ -141,6 +211,86 @@ class BookingDetails {
   final TimeOfDay pickupTime;
 }
 
+/// Primary action button with a subtle press animation.
+class AnimatedPrimaryButton extends StatefulWidget {
+  const AnimatedPrimaryButton({
+    required this.child,
+    required this.onPressed,
+    this.padding,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.expand = true,
+    super.key,
+  });
+
+  final Widget child;
+  final VoidCallback? onPressed;
+  final EdgeInsetsGeometry? padding;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final bool expand;
+
+  @override
+  State<AnimatedPrimaryButton> createState() => _AnimatedPrimaryButtonState();
+}
+
+class _AnimatedPrimaryButtonState extends State<AnimatedPrimaryButton> {
+  double _scale = 1;
+
+  void _updateScale(bool isPressed) {
+    if (widget.onPressed == null) {
+      return;
+    }
+    setState(() => _scale = isPressed ? 0.96 : 1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final backgroundColor = widget.backgroundColor ?? theme.colorScheme.primary;
+    final foregroundColor = widget.foregroundColor ?? Colors.black;
+
+    Widget button = AnimatedScale(
+      scale: _scale,
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOut,
+      child: Material(
+        elevation: widget.onPressed == null ? 0 : 10,
+        shadowColor: backgroundColor.withOpacity(0.45),
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: widget.onPressed,
+          onTapDown: (_) => _updateScale(true),
+          onTapCancel: () => _updateScale(false),
+          onTapUp: (_) => _updateScale(false),
+          child: Padding(
+            padding: widget.padding ??
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: DefaultTextStyle(
+              style: theme.textTheme.titleMedium!.copyWith(
+                fontWeight: FontWeight.w600,
+                color: foregroundColor,
+              ),
+              child: IconTheme(
+                data: IconThemeData(color: foregroundColor),
+                child: Center(child: widget.child),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (widget.expand) {
+      button = SizedBox(width: double.infinity, child: button);
+    }
+
+    return button;
+  }
+}
+
 /// Splash screen displaying the XL Cab logo with a fade-in animation.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -174,32 +324,67 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
-        child: AnimatedOpacity(
-          opacity: _opacity,
-          duration: const Duration(milliseconds: 1200),
-          curve: Curves.easeIn,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(
-                Icons.local_taxi,
-                size: 128,
-                color: Color(0xFFFFC107),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'XL Cab',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                  color: Color(0xFFFFC107),
-                ),
-              ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0B1220),
+              Color(0xFF111827),
+              Color(0xFF070707),
             ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: AnimatedOpacity(
+            opacity: _opacity,
+            duration: const Duration(milliseconds: 1200),
+            curve: Curves.easeIn,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [kPrimaryYellow, Color(0xFFFFE082)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: kPrimaryYellow.withOpacity(0.35),
+                        blurRadius: 40,
+                        spreadRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.local_taxi,
+                    size: 96,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'XL Cab',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.6,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ).animate().fadeIn(duration: 900.ms).scale(
+                  begin: const Offset(0.9, 0.9),
+                  end: const Offset(1, 1),
+                  duration: 700.ms,
+                  curve: Curves.easeOutBack,
+                ),
           ),
         ),
       ),
@@ -351,13 +536,31 @@ class _HomeCatalogueTabState extends State<HomeCatalogueTab> {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          physics: const BouncingScrollPhysics(),
-          itemCount: cars.length,
-          itemBuilder: (context, index) {
-            final car = cars[index];
-            return _CarCard(car: car);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            const maxContentWidth = 640.0;
+            final horizontalPadding = constraints.maxWidth > maxContentWidth
+                ? (constraints.maxWidth - maxContentWidth) / 2 + 24
+                : 20.0;
+
+            return ListView.builder(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                28,
+                horizontalPadding,
+                28,
+              ),
+              physics: const BouncingScrollPhysics(),
+              itemCount: cars.length,
+              itemBuilder: (context, index) {
+                final car = cars[index];
+                final delay = (index * 80).ms;
+                return _CarCard(car: car)
+                    .animate(delay: delay)
+                    .fadeIn(duration: 400.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.08, curve: Curves.easeOut);
+              },
+            );
           },
         );
       },
@@ -381,89 +584,139 @@ class _CarCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _openDetails(context),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.4),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFFFC107), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1F1F1F), Color(0xFF141414)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.network(
-                  car.primaryImageUrl,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 180,
-                    color: Colors.black,
-                    alignment: Alignment.center,
-                    child:
-                        const Icon(Icons.directions_car, size: 48, color: Colors.white),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      car.name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.45),
+              blurRadius: 24,
+              offset: const Offset(0, 18),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _openDetails(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Image.network(
+                          car.primaryImageUrl,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.black,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.directions_car,
+                              size: 64,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      car.description,
-                      style: const TextStyle(fontSize: 14, color: Colors.white70),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.65),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Text(
+                            '\\$${car.pricePerDay.toStringAsFixed(0)}/day',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: kPrimaryYellow,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.event_seat, size: 18),
-                        const SizedBox(width: 4),
-                        Text('${car.seats} seats'),
-                        const Spacer(),
-                        Text('\$${car.pricePerDay.toStringAsFixed(2)}/day'),
+                        Text(
+                          car.name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          car.description,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white70,
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.event_seat, size: 18),
+                                  const SizedBox(width: 6),
+                                  Text('${car.seats} seats'),
+                                ],
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(Icons.arrow_forward, color: kPrimaryYellow.withOpacity(0.8)),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        AnimatedPrimaryButton(
+                          onPressed: () => _openDetails(context),
+                          child: const Text('Book Now'),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => _openDetails(context),
-                        child: const Text('Book Now'),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
 
 /// Tab displaying bookings made during the current session.
 class BookingListScreen extends StatelessWidget {
@@ -482,75 +735,200 @@ class BookingListScreen extends StatelessWidget {
         List<BookingDetails>.from(BookingFormScreen.temporaryBookings.reversed);
 
     if (bookings.isEmpty) {
+      final theme = Theme.of(context);
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.directions_car, size: 64, color: Color(0xFFFFC107)),
-              SizedBox(height: 16),
+            children: [
+              Container(
+                height: 94,
+                width: 94,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [kPrimaryYellow, Color(0xFFFFE082)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Icon(Icons.directions_car, size: 42, color: Colors.black),
+              ),
+              const SizedBox(height: 24),
               Text(
                 'No bookings yet',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
                 'Your confirmed rides will appear here once you make a booking.',
+                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
                 textAlign: TextAlign.center,
               ),
             ],
-          ),
+          ).animate().fadeIn(duration: 450.ms).slideY(begin: 0.08),
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: bookings.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final booking = bookings[index];
-        final schedule =
-            '${_formatDate(booking.pickupDate)} · ${booking.pickupTime.format(context)}';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const maxWidth = 640.0;
+        final horizontalPadding = constraints.maxWidth > maxWidth
+            ? (constraints.maxWidth - maxWidth) / 2 + 24
+            : 20.0;
 
-        return Container(
-          decoration: _cardDecoration.copyWith(
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 6,
-                offset: Offset(0, 4),
-              ),
-            ],
+        return ListView.separated(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            28,
+            horizontalPadding,
+            28,
           ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.local_taxi, color: Color(0xFFFFC107)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      booking.car.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
+          physics: const BouncingScrollPhysics(),
+          itemCount: bookings.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 20),
+          itemBuilder: (context, index) {
+            final booking = bookings[index];
+            final schedule =
+                '${_formatDate(booking.pickupDate)} · ${booking.pickupTime.format(context)}';
+            final theme = Theme.of(context);
+
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF191919), Color(0xFF111111)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 14),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              _BookingInfoRow(label: 'Schedule', value: schedule),
-              _BookingInfoRow(label: 'Pickup', value: booking.pickupLocation),
-              _BookingInfoRow(label: 'Drop-off', value: booking.dropLocation),
-            ],
-          ),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: kPrimaryYellow.withOpacity(0.18),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.local_taxi, color: kPrimaryYellow),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                booking.car.name,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                schedule,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _BookingMetaRow(
+                      icon: Icons.place_outlined,
+                      label: 'Pickup',
+                      value: booking.pickupLocation,
+                    ),
+                    const SizedBox(height: 12),
+                    _BookingMetaRow(
+                      icon: Icons.flag_outlined,
+                      label: 'Drop',
+                      value: booking.dropLocation,
+                    ),
+                  ],
+                ),
+              ),
+            )
+                .animate(delay: (index * 90).ms)
+                .fadeIn(duration: 380.ms, curve: Curves.easeOut)
+                .slideY(begin: 0.08, curve: Curves.easeOut);
+          },
         );
       },
+    );
+  }
+}
+
+class _BookingMetaRow extends StatelessWidget {
+  const _BookingMetaRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 40,
+          width: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: kPrimaryYellow.withOpacity(0.85), size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.white54,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.white,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -708,8 +1086,8 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
                     Text(
                       widget.car.name,
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFFFFC107),
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -717,20 +1095,32 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
                       children: [
                         Icon(Icons.event_seat, color: Colors.white.withOpacity(0.9)),
                         const SizedBox(width: 8),
-                        Text('${widget.car.seats} seats'),
+                        Text(
+                          '${widget.car.seats} seats',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white70,
+                          ),
+                        ),
                         const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFC107).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFFFC107)),
+                            gradient: LinearGradient(
+                              colors: [
+                                kPrimaryYellow.withOpacity(0.2),
+                                kPrimaryYellow.withOpacity(0.05),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: kPrimaryYellow.withOpacity(0.4)),
                           ),
                           child: Text(
                             '\$${widget.car.pricePerDay.toStringAsFixed(2)}/day',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFFFC107),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: kPrimaryYellow,
                             ),
                           ),
                         ),
@@ -739,7 +1129,10 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
                     const SizedBox(height: 20),
                     Text(
                       widget.car.description,
-                      style: const TextStyle(height: 1.5, fontSize: 16),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        height: 1.55,
+                        color: Colors.white70,
+                      ),
                     ),
                   ],
                 ),
@@ -752,24 +1145,9 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFC107),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: _onBookNow,
-              child: const Text('Book Now'),
-            ),
+          child: AnimatedPrimaryButton(
+            onPressed: _onBookNow,
+            child: const Text('Book Now'),
           ),
         ),
       ),
@@ -896,6 +1274,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: Text('Book ${widget.car.name}')),
       body: SingleChildScrollView(
@@ -905,30 +1284,28 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFFC107).withOpacity(0.5)),
-                  color: Colors.black.withOpacity(0.3),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.car.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+              DecoratedBox(
+                decoration: _cardDecoration,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.car.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '\$${widget.car.pricePerDay.toStringAsFixed(2)} per day',
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Text(
+                        '\$${widget.car.pricePerDay.toStringAsFixed(2)} per day',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -976,12 +1353,9 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                 onTap: _selectTime,
               ),
               const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitForm,
-                  child: const Text('Confirm Booking'),
-                ),
+              AnimatedPrimaryButton(
+                onPressed: _submitForm,
+                child: const Text('Confirm Booking'),
               ),
             ],
           ),
@@ -1145,16 +1519,13 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen>
             const Spacer(),
             FadeTransition(
               opacity: _contentFadeAnimation,
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    HomeScreen.routeName,
-                    (route) => false,
-                  ),
-                  child: const Text('Back to Home'),
+              child: AnimatedPrimaryButton(
+                onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  HomeScreen.routeName,
+                  (route) => false,
                 ),
+                child: const Text('Back to Home'),
               ),
             ),
           ],
@@ -1262,20 +1633,27 @@ class _BookingInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.white54,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
             ),
           ),
-          Expanded(
-            child: Text(value),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -1349,62 +1727,89 @@ class ProfileContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _ProfileHeader(user: ProfileScreen._user),
-          const SizedBox(height: 24),
-          const Text(
-            'Booking History',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
-          if (ProfileScreen._bookingHistory.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: _cardDecoration,
-              child: const Text('No bookings yet. Start exploring our cars!'),
-            )
-          else
-            Column(
-              children: ProfileScreen._bookingHistory
-                  .map((item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _BookingHistoryCard(item: item),
-                      ))
-                  .toList(),
-            ),
-          const SizedBox(height: 32),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.logout),
-              label: const Text('Log Out'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFFFC107),
-                side: const BorderSide(color: Color(0xFFFFC107)),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    final theme = Theme.of(context);
+    final history = ProfileScreen._bookingHistory;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const maxWidth = 720.0;
+        final horizontalPadding = constraints.maxWidth > maxWidth
+            ? (constraints.maxWidth - maxWidth) / 2 + 24
+            : 20.0;
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(horizontalPadding, 28, horizontalPadding, 48),
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ProfileHeader(user: ProfileScreen._user)
+                  .animate()
+                  .fadeIn(duration: 450.ms, curve: Curves.easeOut)
+                  .slideY(begin: 0.08, curve: Curves.easeOut),
+              const SizedBox(height: 32),
+              Text(
+                'Booking History',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
+              const SizedBox(height: 18),
+              if (history.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: _cardDecoration,
+                  child: Text(
+                    'No bookings yet. Start exploring our cars!',
+                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                  ),
+                ).animate().fadeIn(duration: 400.ms)
+              else
+                Column(
+                  children: [
+                    for (var i = 0; i < history.length; i++)
+                      _BookingHistoryCard(item: history[i])
+                          .animate(delay: (i * 90).ms)
+                          .fadeIn(duration: 360.ms, curve: Curves.easeOut)
+                          .slideY(begin: 0.08, curve: Curves.easeOut),
+                  ],
+                ),
+              const SizedBox(height: 36),
+              AnimatedPrimaryButton(
+                expand: false,
+                backgroundColor: Colors.white.withOpacity(0.08),
+                foregroundColor: kPrimaryYellow,
+                onPressed: () {},
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.logout, size: 18),
+                    SizedBox(width: 8),
+                    Text('Log Out'),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
-const BoxDecoration _cardDecoration = BoxDecoration(
-  color: Color(0xFF1F1F1F),
-  borderRadius: BorderRadius.all(Radius.circular(16)),
-  border: Border.fromBorderSide(BorderSide(color: Colors.white10)),
+final BoxDecoration _cardDecoration = BoxDecoration(
+  gradient: const LinearGradient(
+    colors: [Color(0xFF1C1C1C), Color(0xFF121212)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  ),
+  borderRadius: BorderRadius.circular(24),
+  border: Border.all(color: Colors.white.withOpacity(0.08)),
   boxShadow: [
-    const BoxShadow(
-      color: Colors.black54,
-      blurRadius: 12,
-      offset: Offset(0, 6),
+    BoxShadow(
+      color: Colors.black.withOpacity(0.45),
+      blurRadius: 24,
+      offset: const Offset(0, 14),
     ),
   ],
 );
@@ -1416,58 +1821,65 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
+    final theme = Theme.of(context);
+    return DecoratedBox(
       decoration: _cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                height: 64,
-                width: 64,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFFFC107),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  height: 72,
+                  width: 72,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [kPrimaryYellow, Color(0xFFFFE082)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const Icon(Icons.person, size: 40, color: Colors.black),
                 ),
-                child: const Icon(Icons.person, size: 40, color: Colors.black),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user.email,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Text(
+                        user.email,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _ProfileDetailRow(
-            icon: Icons.phone,
-            label: 'Phone',
-            value: user.phone,
-          ),
-          const SizedBox(height: 12),
-          _ProfileDetailRow(
-            icon: Icons.email,
-            label: 'Email',
-            value: user.email,
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 24),
+            _ProfileDetailRow(
+              icon: Icons.phone,
+              label: 'Phone',
+              value: user.phone,
+            ),
+            _ProfileDetailRow(
+              icon: Icons.email,
+              label: 'Email',
+              value: user.email,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1478,30 +1890,71 @@ class _ProfileDetailRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.dense = false,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFFFFC107)),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(color: Colors.white70),
+    final theme = Theme.of(context);
+    final backgroundColor = dense ? Colors.transparent : Colors.white.withOpacity(0.05);
+    final iconBackground = Colors.white.withOpacity(dense ? 0.08 : 0.12);
+    final borderRadius = BorderRadius.circular(dense ? 14 : 18);
+    final horizontalPadding = dense ? 8.0 : 16.0;
+    final verticalPadding = dense ? 8.0 : 12.0;
+
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: dense ? 4 : 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: borderRadius,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconBackground,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: kPrimaryYellow, size: 20),
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white54,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1513,70 +1966,80 @@ class _BookingHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration.copyWith(
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black38,
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.directions_car, color: Color(0xFFFFC107)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  item.carName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+    final theme = Theme.of(context);
+    final bool isCompleted = item.status == 'Completed';
+    final Color statusColor = isCompleted ? const Color(0xFF34D399) : kPrimaryYellow;
+
+    return DecoratedBox(
+      decoration: _cardDecoration,
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: kPrimaryYellow.withOpacity(0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.directions_car, color: kPrimaryYellow),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.carName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.dateLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: item.status == 'Completed'
-                      ? Colors.green.withOpacity(0.2)
-                      : Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  item.status,
-                  style: TextStyle(
-                    color: item.status == 'Completed' ? Colors.greenAccent : Colors.orangeAccent,
-                    fontWeight: FontWeight.w600,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.16),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withOpacity(0.45)),
+                  ),
+                  child: Text(
+                    item.status,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _ProfileDetailRow(
-            icon: Icons.calendar_today,
-            label: 'Schedule',
-            value: item.dateLabel,
-          ),
-          const SizedBox(height: 8),
-          _ProfileDetailRow(
-            icon: Icons.location_on,
-            label: 'Pickup',
-            value: item.pickupLocation,
-          ),
-          const SizedBox(height: 8),
-          _ProfileDetailRow(
-            icon: Icons.flag,
-            label: 'Drop-off',
-            value: item.dropLocation,
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 18),
+            _ProfileDetailRow(
+              icon: Icons.location_on,
+              label: 'Pickup',
+              value: item.pickupLocation,
+              dense: true,
+            ),
+            _ProfileDetailRow(
+              icon: Icons.flag,
+              label: 'Drop-off',
+              value: item.dropLocation,
+              dense: true,
+            ),
+          ],
+        ),
       ),
     );
   }
